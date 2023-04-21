@@ -2,12 +2,10 @@ from cmu_graphics import *
 from PIL import Image
 import os, pathlib
 import random
+import copy 
 # pepperoni: http://www.clker.com/clipart-pepperoni-1.html
 # bacon: https://www.vecteezy.com/free-png/bacon 
 # mushroom: https://in.pinterest.com/pin/png-clip-art--393853929905365183/ 
-
-# customerList = [cs1, cs2, cs3, cs4, cs5]
-
 
 class Order: 
     def __init__(self, size, type, customer, diffToppings, eachToppings):
@@ -58,6 +56,7 @@ def onAppStart(app):
     app.toppings.append(potato)
     app.toppings.append(bacon)
     app.toppings.append(mushroom)
+    app.options = ['pepperoni', 'chicken', 'pork', 'beef', 'shrimp', 'olives', 'potato', 'bacon', 'mushroom']
     app.orderToppings = []
     app.currentToppings = []
     app.size = ['small', 'medium', 'large']
@@ -66,7 +65,13 @@ def onAppStart(app):
     app.orderDone = False 
     app.currOrder,app.currPizza = randomOrder(app)
     app.move = None
+    app.toppingsOnPizza = []
     app.currTopping = None
+    app.coordinates = [(125, 125), (225, 125), (325, 125), 
+                       (125, 225), (225, 225), (325, 225), 
+                       (125, 325), (225, 325), (325, 325)]
+    app.cx = 0
+    app.cy = 0
 
     # customer pictures all from https://creazilla.com/ 
     # customer 1
@@ -93,6 +98,7 @@ def onAppStart(app):
     app.cs5 = Image.open(os.path.join(pathlib.Path(__file__).parent,"customer5.jpg"))
     app.cs5 = CMUImage(app.cs5)
     app.cs5Width, app.cs5Height = app.cs5.image.width, app.cs5.image.height
+
 
 def randomOrder(app):
     type = random.choice(app.type)
@@ -124,60 +130,61 @@ def randomOrder(app):
     currPizza = Pizza(825 ,500, pizzaRadius, baseColor, customer)
     return currOrder, currPizza
 
-# def countScore(app):
-#     if app.size == 'small':
-
-
 
 def onMousePress(app, mouseX, mouseY):
-    # pepperoni
-    if (mouseX >= 100 and mouseX <= 150) and (mouseY >= 100 and mouseY <= 150):
-        app.move = (mouseX, mouseY)
-        app.currTopping = 'pepperoni'
+    if(mouseX >= 100 and mouseX <= 350) and ((mouseY >= 100 and mouseY <= 350)):
+        # pepperoni
+        if (mouseX >= 100 and mouseX <= 150) and (mouseY >= 100 and mouseY <= 150):
+            app.move = (mouseX, mouseY)
+            app.currTopping = 'pepperoni'
 
-    # chicken
-    if (mouseX >= 200 and mouseX <= 250) and (mouseY >= 100 and mouseY <= 150):
-        app.move = (mouseX, mouseY)
-        app.currTopping = 'chicken'
+        # chicken
+        if (mouseX >= 200 and mouseX <= 250) and (mouseY >= 100 and mouseY <= 150):
+            app.move = (mouseX, mouseY)
+            app.currTopping = 'chicken'
 
-    # pork 
-    if (mouseX >= 300 and mouseX <= 350) and (mouseY >= 100 and mouseY <= 150):
-        app.move = (mouseX, mouseY)
-        app.currTopping = 'pork'
+        # pork 
+        if (mouseX >= 300 and mouseX <= 350) and (mouseY >= 100 and mouseY <= 150):
+            app.move = (mouseX, mouseY)
+            app.currTopping = 'pork'
 
-    # beef
-    if (mouseX >= 100 and mouseX <= 150) and (mouseY >= 200 and mouseY <= 250):
-        app.move = (mouseX, mouseY)
-        app.currTopping = 'beef'
+        # beef
+        if (mouseX >= 100 and mouseX <= 150) and (mouseY >= 200 and mouseY <= 250):
+            app.move = (mouseX, mouseY)
+            app.currTopping = 'beef'
 
-    # shrimp
-    if (mouseX >= 200 and mouseX <= 250) and (mouseY >= 200 and mouseY <= 250):
-        app.move = (mouseX, mouseY)
-        app.currTopping = 'shrimp'
-    
-    # olives
-    if (mouseX >= 300 and mouseX <= 350) and (mouseY >= 200 and mouseY <= 250):
-        app.move = (mouseX, mouseY)
-        app.currTopping = 'olives' 
+        # shrimp
+        if (mouseX >= 200 and mouseX <= 250) and (mouseY >= 200 and mouseY <= 250):
+            app.move = (mouseX, mouseY)
+            app.currTopping = 'shrimp'
+        
+        # olives
+        if (mouseX >= 300 and mouseX <= 350) and (mouseY >= 200 and mouseY <= 250):
+            app.move = (mouseX, mouseY)
+            app.currTopping = 'olives' 
 
-    # potato 
-    if (mouseX >= 100 and mouseX <= 150) and (mouseY >= 300 and mouseY <= 350):
-        app.move = (mouseX, mouseY)
-        app.currTopping = 'potato'
+        # potato 
+        if (mouseX >= 100 and mouseX <= 150) and (mouseY >= 300 and mouseY <= 350):
+            app.move = (mouseX, mouseY)
+            app.currTopping = 'potato'
 
-    # bacon
-    if (mouseX >= 200 and mouseX <= 250) and (mouseY >= 300 and mouseY <= 350):
-        app.move = (mouseX, mouseY)
-        app.currTopping = 'bacon'
+        # bacon
+        if (mouseX >= 200 and mouseX <= 250) and (mouseY >= 300 and mouseY <= 350):
+            app.move = (mouseX, mouseY)
+            app.currTopping = 'bacon'
 
-    # mushroom
-    if (mouseX >= 300 and mouseX <= 350) and (mouseY >= 300 and mouseY <= 350):
-        app.move = (mouseX, mouseY)
-        app.currTopping = 'mushroom'
+        # mushroom
+        if (mouseX >= 300 and mouseX <= 350) and (mouseY >= 300 and mouseY <= 350):
+            app.move = (mouseX, mouseY)
+            app.currTopping = 'mushroom'
+
 
 def onMouseDrag(app, mouseX, mouseY):
+    app.cx = mouseX
+    app.cy = mouseY
+
     if app.currTopping == 'pepperoni':
-        app.toppings[0].cx,app.toppings[0].cy = mouseX, mouseY
+        app.toppings[0].cx,app.toppings[0].cy = mouseX, mouseY  
 
     if app.currTopping == 'chicken':
         app.toppings[1].cx, app.toppings[1].cy = mouseX, mouseY
@@ -204,34 +211,64 @@ def onMouseDrag(app, mouseX, mouseY):
         app.toppings[8].cx, app.toppings[8].cy = mouseX, mouseY
 
 
+def onMouseRelease(app, mouseX, mouseY):
+    if ((mouseX > app.currPizza.cx - app.currPizza.r and mouseX < app.currPizza.cx + app.currPizza.r) and 
+        (mouseY > app.currPizza.cy - app.currPizza.r and mouseY < app.currPizza.cy + app.currPizza.r)):
+        if app.currTopping != None: 
+            index = app.options.index(app.currTopping) 
+            newTopping = copy.deepcopy(app.toppings[index])
+            app.toppings.append(newTopping)
+            app.toppingsOnPizza.append(newTopping) 
+        
+            app.toppings[len(app.toppings) - 1].cx = app.coordinates[index][0]
+            app.toppings[len(app.toppings) - 1].cy = app.coordinates[index][1]
+            app.currTopping = None
+    
+    else:
+        index = app.options.index(app.currTopping) 
+        app.toppings[index].cx = app.coordinates[index][0]
+        app.toppings[index].cy = app.coordinates[index][1]
+
+
 def drawToppingSelection(app):
+    if len(app.toppingsOnPizza) > 0:
+        for i in range(len(app.toppingsOnPizza)):
+         drawCircle(app.toppingsOnPizza[i].cx, app.toppingsOnPizza[i].cy, app.toppingsOnPizza[i].r, fill=app.toppingsOnPizza[i].color)
     if app.currPizza != None:
-        drawCircle(app.currPizza.cx,app.currPizza.cy,app.currPizza.r,fill=app.currPizza.color)
+        drawCircle(app.currPizza.cx, app.currPizza.cy, app.currPizza.r, fill=app.currPizza.color)
     for topping in app.toppings:
-        drawCircle(topping.cx,topping.cy,topping.r,fill = topping.color)
+        drawCircle(topping.cx, topping.cy, topping.r, fill = topping.color)
+
 
 def redrawAll(app):
     drawRect(0,0, 450, app.height, fill = 'lightYellow')
     drawLabel('Toppings', 225, 50, size = 20)
     drawToppingSelection(app)
     drawRect(50, 400, 350, 350, border = 'black', fill = 'white')
-    drawLabel(f'Type: {app.currOrder.type}', 100, 100)
-    drawLabel(f'Size: {app.currOrder.size}', 200, 200)
-    drawLabel(f'Customer Name: {app.currOrder.customer}', 300, 300)
-    if app.currOrder.customer == 'A':
-        newWidth, newHeight = app.cs1Width//3, app.cs1Height//3
-        drawImage(app.cs1, 100, 600, width = newWidth, height = newHeight)
-
-
-    # elif app.currOrder.customer == 'B':
-    #     drawRect(x, y, width, height)
-    # elif app.currOrder.customer == 'C':
-    #     drawRect(x, y, width, height)
-    # elif app.currOrder.customer == 'D':
-    #     drawRect(x, y, width, height)
-    # elif app.currOrder.customer == 'E':
-    #     drawRect(x, y, width, height)
+    drawLabel(f'Customer Name: {app.currOrder.customer}', 70, 430, align = 'left', size = 15)
+    drawLabel(f'Type: {app.currOrder.type}', 70, 480, align = 'left', size = 15)
+    drawLabel(f'Size: {app.currOrder.size}', 70, 530, align = 'left', size = 15)
     
+    if app.currOrder.customer == 'A':
+        newWidth, newHeight = app.cs1Width//5, app.cs1Height//5
+        drawImage(app.cs1, 235, 580, width = newWidth, height = newHeight)
+
+    elif app.currOrder.customer == 'B':
+        newWidth, newHeight = app.cs2Width//12, app.cs2Height//12
+        drawImage(app.cs2, 235, 580, width = newWidth, height = newHeight)
+
+    elif app.currOrder.customer == 'C':
+        newWidth, newHeight = app.cs3Width//5, app.cs3Height//5
+        drawImage(app.cs3, 235, 580, width = newWidth, height = newHeight)
+    
+    elif app.currOrder.customer == 'D':
+        newWidth, newHeight = app.cs4Width//5, app.cs4Height//5
+        drawImage(app.cs4, 235, 580, width = newWidth, height = newHeight)
+
+    elif app.currOrder.customer == 'E':
+        newWidth, newHeight = app.cs5Width//5, app.cs5Height//5
+        drawImage(app.cs5, 235, 580, width = newWidth, height = newHeight)
+
 
    
 
