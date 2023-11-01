@@ -1,0 +1,221 @@
+from cmu_graphics import*
+import copy
+import random
+import Bio
+from Bio.Seq import Seq 
+from Bio import SeqIO
+from PIL import Image
+import os, pathlib
+
+
+# getting rgb: https://convertingcolors.com/hex-color-E6FFE3.html?search=e6ffe3
+# biology1: https://static.vecteezy.com/system/resources/previews/024/291/508/original/biology-graphic-clipart-design-free-png.png 
+# aminoacid1: https://1001freedownloads.s3.amazonaws.com/vector/thumb/115945/isoleucine.png
+# codonchart: https://cdn.kastatic.org/ka-perseus-images/f5de6355003ee322782b26404ef0733a1d1a61b0.png 
+# codonwheel: https://upload.wikimedia.org/wikipedia/commons/thumb/7/70/Aminoacids_table.svg/1200px-Aminoacids_table.svg.png
+
+
+def onAppStart(app):
+    app.screen = 'homescreen'
+    app.x = 0
+    app.y = 0
+    app.counter = 0
+    app.gameOver = False 
+    app.score = 0
+    app.stepsPerSecond = 1
+    app.allAminoAcids = [Ala, Arg, Asp, Asn, Cys, Glu, Gln, Gly, His, Ile, Leu, Lys, Met, Phe, Pro, Ser, Thr, Trp, Tyr, Val]
+    app.mainAminoAcid, app.selectedAminoAcids, app.selectedCodons = randomAminoAcids(app)
+
+# HOMESCREEN
+def homescreen_redrawAll(app):
+    # background color 
+    newgreen = rgb(230, 240, 220)
+    drawRect(0, 0, app.width, app.height, fill = newgreen)
+
+    # title 
+    drawLabel('Biology with Amino Acids', 600, 200, 
+              size = 38, bold = True, font = 'monospace')
+
+    # game 1
+    drawRect(300, 600, 200, 50, fill = 'lightGreen', border = 'black')
+    drawLabel('Game 1', 400, 625, size = 20, font = 'monospace')
+
+    # game 2
+    drawRect(700, 600, 200, 50, fill = 'lightGreen', border = 'black')
+    drawLabel('Game 2', 800, 625, size = 20, font = 'monospace')
+
+    # game 1 button pressed
+    if (app.x > 300 and app.x < 500) and (app.y > 600 and app.y < 650):
+        setActiveScreen('game1Instructions')
+
+    # game 2 button pressed
+    if (app.x > 700 and app.x < 900) and (app.y > 600 and app.y < 650):
+        setActiveScreen('game2Instructions')
+
+def homescreen_onMousePress(app, mouseX, mouseY):
+    # mouseX, mouseY on game 1 button
+    if ((mouseX > 300 and mouseX < 500) and (mouseY > 600 and mouseY < 650)):
+        app.x = mouseX
+        app.y = mouseY
+    
+    # mouseX, mouseY on game 2 button 
+    elif ((mouseX > 700 and mouseX < 900) and (mouseY > 600 and mouseY < 650)):
+        app.x = mouseX
+        app.y = mouseY
+
+# GAME 1 INSTRUCTIONS
+def game1Instructions_redrawAll(app):
+    drawLabel('These are the instructions for game 1!', 600, 150, bold = True, size = 30)
+    
+    # back to homescreen button 
+    drawRect(10, 10, 60, 30, fill = 'red')
+    drawLabel('Back', 40, 25, size = 15, font = 'monospace', fill = 'white', bold = True)
+    if (app.x > 10 and app.x < 70) and (app.y > 10 and app.y < 40):
+        setActiveScreen('homescreen')
+    
+    # play game button
+    drawRect(500, 650, 200, 50, fill = 'lightGreen')
+    drawLabel('Play', 600, 675, size = 20, font = 'monospace')
+    if (app.x > 500 and app.x < 700) and (app.y > 650 and app.y < 700):
+        setActiveScreen('game1Play')
+
+def game1Instructions_onMousePress(app, mouseX, mouseY):
+    # mouseX, mouseY on close button
+    if ((mouseX > 10 and mouseX < 70) and (mouseY > 10 and mouseY < 40)):
+        app.x = mouseX
+        app.y = mouseY
+
+    # mouseX, mouseY on play button
+    if (mouseX > 500 and mouseX < 700) and (mouseY > 650 and mouseY < 700): 
+        app.x = mouseX
+        app.y = mouseY
+
+# GAME 2 INSTRUCTIONS
+def game2Instructions_redrawAll(app):
+    drawLabel('These are the instructions for game 2!', 600, 150, bold = True, size = 30)
+
+    # back to homescreen button
+    drawRect(10, 10, 60, 30, fill = 'red')
+    drawLabel('Back', 40, 25, size = 15, font = 'monospace', fill = 'white', bold = True)
+    if (app.x > 10 and app.x < 70) and (app.y > 10 and app.y < 40):
+        setActiveScreen('homescreen')
+
+    # play game button
+    drawRect(500, 650, 200, 50, fill = 'lightGreen', border = 'black')
+    drawLabel('Play', 600, 675, size = 20, font = 'monospace')
+    if (app.x > 500 and app.x < 700) and (app.y > 650 and app.y < 700):
+        setActiveScreen('game2Play')
+
+def game2Instructions_onMousePress(app, mouseX, mouseY):
+    # mouseX, mouseY on close button
+    if (mouseX > 10 and mouseX < 70) and (mouseY > 10 and mouseY < 40):
+        app.x = mouseX
+        app.y = mouseY
+
+    # mouseX, mouseY on play button
+    if (mouseX > 600 and mouseX < 800) and (mouseY > 650 and mouseY < 700): 
+        app.x = mouseX
+        app.y = mouseY
+
+# GAME 1 PLAY
+# given the full name of the amino acid, choose the corresponding codon
+def randomAminoAcids(app):
+    # 1 main keyword
+    mainAminoAcid = (random.choice(app.allAminoAcids))
+
+    # 4 options
+    threeSelectedAminoAcids = random.sample(app.allAminoAcids, 3) 
+    selectedAminoAcids = threeSelectedAminoAcids + [mainAminoAcid]
+    selectedCodonsOrdered = []
+    for aa in selectedAminoAcids:
+        selectedCodon = random.choice(aa.codon)
+        selectedCodonsOrdered.append(selectedCodon)
+
+    # randomize the order of selectedCodonsOrdered
+    selectedCodons = []
+    while len(selectedCodonsOrdered) != 0:
+        codon = random.choice(selectedCodonsOrdered)
+        selectedCodons.append(codon)
+        selectedCodonsOrdered.remove(codon)
+
+    print('main:', mainAminoAcid.name)
+    print('selectedCodons:', selectedCodons)
+
+    return mainAminoAcid, selectedAminoAcids, selectedCodons
+
+       
+
+def game1Play_redrawAll(app):
+    # keyword
+    drawRect(400, 200, 400, 200, fill = 'lightGreen', border = 'black')
+    drawLabel(app.mainAminoAcid.name, 600, 300, size = 30, font = 'monospace')
+
+    # options
+    rx = 300
+    ry = 600
+    for i in range(4):
+        drawRect(rx, ry, 120, 60, fill = 'lightGreen', border = 'black')
+        rx += 160
+    
+    lx = 360
+    ly = 630
+    for aa in app.selectedCodons:
+        drawLabel(aa, lx, ly, size = 20, font = 'monospace')
+        lx += 160    
+    
+    # counter
+    drawLabel(app.counter, 1100, 100)
+
+    # when time is up
+    if app.gameOver == True:
+        drawRect(450, 200, 300, 400, border = 'black', borderWidth = 2, fill = 'lightGrey')
+    
+
+def game1Play_onMousePress(app, mouseX, mouseY):
+    pass
+
+def game1Play_onStep(app):
+    if app.counter < 60: 
+        app.counter += 1
+    else:
+        app.gameOver = True 
+
+# GAME 2 PLAY
+def game2Play_redrawAll(app, mouseX, mouseY):
+    pass
+
+def game2Play_onMousePress(app):
+    pass
+
+class Aminoacids:
+    def __init__(self, codon, name, letter):
+        self.codon = codon
+        self.name = name
+        self.letter = letter
+
+Ala = Aminoacids(['GCU', 'GCC', 'GCA', 'GCG'], 'Alanine', 'A')
+Arg = Aminoacids(['CGU', 'CGC', 'CGA', 'CGG', 'AGA', 'AGG'], 'Arginine', 'R')
+Asp = Aminoacids(['GAU', 'GAC'], 'Aspartic Acid', 'D')
+Asn = Aminoacids(['AAU', 'AAC'], 'Asparagine', 'N')
+Cys = Aminoacids(['UGU', 'UGC'], 'Cysteine', 'C')
+Glu = Aminoacids(['GAA', 'GAG'], 'Glutamic Acid', 'E')
+Gln = Aminoacids(['CAA', 'CAG'], 'Glutamine', 'Q')
+Gly = Aminoacids(['GGU', 'GGC', 'GGA', 'GGG'], 'Glycine', 'G')
+His = Aminoacids(['CAU', 'CAC'], 'Histidine', 'H')
+Ile = Aminoacids(['AUU', 'AUC', 'AUA'], 'Isoleucine', 'I')
+Leu = Aminoacids(['UUA', 'UUG', 'CUU', 'CUC', 'CUA', 'CUG'], 'Leucine', 'L')
+Lys = Aminoacids(['AAA', 'AAG'], 'Lysine', 'K')
+Met = Aminoacids(['AUG'], 'Methionine', 'M')
+Phe = Aminoacids(['UUU', 'UUC'], 'Phenylalanine', 'F')
+Pro = Aminoacids(['CCU', 'CCC', 'CCA', 'CCG'], 'Proline', 'P')
+Ser = Aminoacids(['UCU', 'UCC', 'UCA', 'UCG', 'AGU', 'AGC'], 'Serine', 'S')
+Thr = Aminoacids(['ACU', 'ACC', 'ACA', 'ACG'], 'Threonine', 'T')
+Trp = Aminoacids(['UGG'], 'Tryptophan', 'W')
+Tyr = Aminoacids(['UAU', 'UAC'], 'Tyrosine', 'Y')
+Val = Aminoacids(['GUU', 'GUC', 'GUA', 'GUG'], 'Valine', 'V')
+
+
+def main():
+    runAppWithScreens(initialScreen = 'homescreen', width = 1200, height = 800)
+
+main()
