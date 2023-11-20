@@ -1,191 +1,17 @@
 from cmu_graphics import*
 import copy
 import random
+import math
+from PIL import Image
+import os, pathlib
 import Bio
 from Bio.Seq import Seq 
 from Bio import SeqIO
-from PIL import Image
-import os, pathlib
-
+from Bio import pairwise2
+from Bio.pairwise2 import format_alignment
 
 # getting rgb: https://convertingcolors.com/hex-color-E6FFE3.html?search=e6ffe3
 # biology1: https://static.vecteezy.com/system/resources/previews/024/291/508/original/biology-graphic-clipart-design-free-png.png 
-# aminoacid1: https://1001freedownloads.s3.amazonaws.com/vector/thumb/115945/isoleucine.png
-# codonchart: https://cdn.kastatic.org/ka-perseus-images/f5de6355003ee322782b26404ef0733a1d1a61b0.png 
-# codonwheel: https://upload.wikimedia.org/wikipedia/commons/thumb/7/70/Aminoacids_table.svg/1200px-Aminoacids_table.svg.png
-
-
-def onAppStart(app):
-    app.screen = 'homescreen'
-    app.x = 0
-    app.y = 0
-    app.counter = 0
-    app.gameOver = False 
-    app.score = 0
-    app.stepsPerSecond = 1
-    app.allAminoAcids = [Ala, Arg, Asp, Asn, Cys, Glu, Gln, Gly, His, Ile, Leu, Lys, Met, Phe, Pro, Ser, Thr, Trp, Tyr, Val]
-    app.mainAminoAcid, app.selectedAminoAcids, app.selectedCodons = randomAminoAcids(app)
-
-# HOMESCREEN
-def homescreen_redrawAll(app):
-    # background color 
-    newgreen = rgb(230, 240, 220)
-    drawRect(0, 0, app.width, app.height, fill = newgreen)
-
-    # title 
-    drawLabel('Biology with Amino Acids', 600, 200, 
-              size = 38, bold = True, font = 'monospace')
-
-    # game 1
-    drawRect(300, 600, 200, 50, fill = 'lightGreen', border = 'black')
-    drawLabel('Game 1', 400, 625, size = 20, font = 'monospace')
-
-    # game 2
-    drawRect(700, 600, 200, 50, fill = 'lightGreen', border = 'black')
-    drawLabel('Game 2', 800, 625, size = 20, font = 'monospace')
-
-    # game 1 button pressed
-    if (app.x > 300 and app.x < 500) and (app.y > 600 and app.y < 650):
-        setActiveScreen('game1Instructions')
-
-    # game 2 button pressed
-    if (app.x > 700 and app.x < 900) and (app.y > 600 and app.y < 650):
-        setActiveScreen('game2Instructions')
-
-def homescreen_onMousePress(app, mouseX, mouseY):
-    # mouseX, mouseY on game 1 button
-    if ((mouseX > 300 and mouseX < 500) and (mouseY > 600 and mouseY < 650)):
-        app.x = mouseX
-        app.y = mouseY
-    
-    # mouseX, mouseY on game 2 button 
-    elif ((mouseX > 700 and mouseX < 900) and (mouseY > 600 and mouseY < 650)):
-        app.x = mouseX
-        app.y = mouseY
-
-# GAME 1 INSTRUCTIONS
-def game1Instructions_redrawAll(app):
-    drawLabel('These are the instructions for game 1!', 600, 150, bold = True, size = 30)
-    
-    # back to homescreen button 
-    drawRect(10, 10, 60, 30, fill = 'red')
-    drawLabel('Back', 40, 25, size = 15, font = 'monospace', fill = 'white', bold = True)
-    if (app.x > 10 and app.x < 70) and (app.y > 10 and app.y < 40):
-        setActiveScreen('homescreen')
-    
-    # play game button
-    drawRect(500, 650, 200, 50, fill = 'lightGreen')
-    drawLabel('Play', 600, 675, size = 20, font = 'monospace')
-    if (app.x > 500 and app.x < 700) and (app.y > 650 and app.y < 700):
-        setActiveScreen('game1Play')
-
-def game1Instructions_onMousePress(app, mouseX, mouseY):
-    # mouseX, mouseY on close button
-    if ((mouseX > 10 and mouseX < 70) and (mouseY > 10 and mouseY < 40)):
-        app.x = mouseX
-        app.y = mouseY
-
-    # mouseX, mouseY on play button
-    if (mouseX > 500 and mouseX < 700) and (mouseY > 650 and mouseY < 700): 
-        app.x = mouseX
-        app.y = mouseY
-
-# GAME 2 INSTRUCTIONS
-def game2Instructions_redrawAll(app):
-    drawLabel('These are the instructions for game 2!', 600, 150, bold = True, size = 30)
-
-    # back to homescreen button
-    drawRect(10, 10, 60, 30, fill = 'red')
-    drawLabel('Back', 40, 25, size = 15, font = 'monospace', fill = 'white', bold = True)
-    if (app.x > 10 and app.x < 70) and (app.y > 10 and app.y < 40):
-        setActiveScreen('homescreen')
-
-    # play game button
-    drawRect(500, 650, 200, 50, fill = 'lightGreen', border = 'black')
-    drawLabel('Play', 600, 675, size = 20, font = 'monospace')
-    if (app.x > 500 and app.x < 700) and (app.y > 650 and app.y < 700):
-        setActiveScreen('game2Play')
-
-def game2Instructions_onMousePress(app, mouseX, mouseY):
-    # mouseX, mouseY on close button
-    if (mouseX > 10 and mouseX < 70) and (mouseY > 10 and mouseY < 40):
-        app.x = mouseX
-        app.y = mouseY
-
-    # mouseX, mouseY on play button
-    if (mouseX > 600 and mouseX < 800) and (mouseY > 650 and mouseY < 700): 
-        app.x = mouseX
-        app.y = mouseY
-
-# GAME 1 PLAY
-# given the full name of the amino acid, choose the corresponding codon
-def randomAminoAcids(app):
-    # 1 main keyword
-    mainAminoAcid = (random.choice(app.allAminoAcids))
-
-    # 4 options
-    threeSelectedAminoAcids = random.sample(app.allAminoAcids, 3) 
-    selectedAminoAcids = threeSelectedAminoAcids + [mainAminoAcid]
-    selectedCodonsOrdered = []
-    for aa in selectedAminoAcids:
-        selectedCodon = random.choice(aa.codon)
-        selectedCodonsOrdered.append(selectedCodon)
-
-    # randomize the order of selectedCodonsOrdered
-    selectedCodons = []
-    while len(selectedCodonsOrdered) != 0:
-        codon = random.choice(selectedCodonsOrdered)
-        selectedCodons.append(codon)
-        selectedCodonsOrdered.remove(codon)
-
-    print('main:', mainAminoAcid.name)
-    print('selectedCodons:', selectedCodons)
-
-    return mainAminoAcid, selectedAminoAcids, selectedCodons
-
-       
-
-def game1Play_redrawAll(app):
-    # keyword
-    drawRect(400, 200, 400, 200, fill = 'lightGreen', border = 'black')
-    drawLabel(app.mainAminoAcid.name, 600, 300, size = 30, font = 'monospace')
-
-    # options
-    rx = 300
-    ry = 600
-    for i in range(4):
-        drawRect(rx, ry, 120, 60, fill = 'lightGreen', border = 'black')
-        rx += 160
-    
-    lx = 360
-    ly = 630
-    for aa in app.selectedCodons:
-        drawLabel(aa, lx, ly, size = 20, font = 'monospace')
-        lx += 160    
-    
-    # counter
-    drawLabel(app.counter, 1100, 100)
-
-    # when time is up
-    if app.gameOver == True:
-        drawRect(450, 200, 300, 400, border = 'black', borderWidth = 2, fill = 'lightGrey')
-    
-
-def game1Play_onMousePress(app, mouseX, mouseY):
-    pass
-
-def game1Play_onStep(app):
-    if app.counter < 60: 
-        app.counter += 1
-    else:
-        app.gameOver = True 
-
-# GAME 2 PLAY
-def game2Play_redrawAll(app, mouseX, mouseY):
-    pass
-
-def game2Play_onMousePress(app):
-    pass
 
 class Aminoacids:
     def __init__(self, codon, name, letter):
@@ -215,7 +41,269 @@ Tyr = Aminoacids(['UAU', 'UAC'], 'Tyrosine', 'Y')
 Val = Aminoacids(['GUU', 'GUC', 'GUA', 'GUG'], 'Valine', 'V')
 
 
+def onAppStart(app):
+   app.screen = 'homescreen'
+   app.image = Image.open(os.path.join(pathlib.Path(__file__).parent,"biology1.jpg"))
+   app.image = CMUImage(app.image)
+   app.imageWidth, app.imageHeight = app.image.image.width, app.image.image.height
+   app.hx = 0
+   app.hy = 0
+   app.ix = 0
+   app.iy = 0
+   app.dna = ''
+   app.errorMessage = None
+   app.extraDNAbases = 0
+   app.missingDNAbases = 0
+   app.generatingRNA = False
+   app.rna = ''
+   app.generatingAminoAcid = False
+   app.aminoAcid = ''
+   app.typex = 0
+   app.typey = 0
+
+   # type page images 
+   # https://www.stockio.com/free-clipart/glutamine-amino-acid
+   app.glutamine = Image.open(os.path.join(pathlib.Path(__file__).parent,"glutamine.jpg"))
+   app.glutamine = CMUImage(app.glutamine)
+   app.glutamineWidth, app.glutamineHeight = app.glutamine.image.width, app.glutamine.image.height
+
+   # https://www.stockio.com/free-clipart/aspartic-acid-amino-acid
+   app.asparticAcid = Image.open(os.path.join(pathlib.Path(__file__).parent,"asparticAcid.jpg"))
+   app.asparticAcid = CMUImage(app.asparticAcid)
+   app.asparticAcidWidth, app.asparticAcidHeight = app.asparticAcid.image.width, app.asparticAcid.image.height
+
+   # https://www.1001freedownloads.com/free-clipart/isoleucine-amino-acid
+   app.isoleucine = Image.open(os.path.join(pathlib.Path(__file__).parent,"isoleucine.jpg"))
+   app.isoleucine = CMUImage(app.isoleucine)
+   app.isoleucineWidth, app.isoleucineHeight = app.isoleucine.image.width, app.isoleucine.image.height
+
+   # https://www.1001freedownloads.com/free-clipart/glycine-amino-acid
+   app.glycine = Image.open(os.path.join(pathlib.Path(__file__).parent,"glycine.jpg"))
+   app.glycine = CMUImage(app.glycine)
+   app.glycineWidth, app.glycineHeight = app.glycine.image.width, app.glycine.image.height
+
+   # https://www.1001freedownloads.com/free-clipart/phenylalanine-amino-acid
+   app.phenylalanine = Image.open(os.path.join(pathlib.Path(__file__).parent,"phenylalanine.jpg"))
+   app.phenylalanine = CMUImage(app.phenylalanine)
+   app.phenylalanineWidth, app.phenylalanineHeight = app.phenylalanine.image.width, app.phenylalanine.image.height
+
+
+
+def homescreen_redrawAll(app):
+   # background color 
+    newgreen = rgb(230, 240, 220)
+    drawRect(0, 0, app.width, app.height, fill = newgreen)
+    
+    # background image
+    newWidth, newHeight = (app.imageWidth//10 ,app.imageHeight//10)
+    drawImage(app.image, app.width/2, app.height/2, width = newWidth, height = newHeight, align = 'center')
+
+    # title 
+    drawLabel('Biology with Amino Acids', 600, 200, 
+              size = 35, bold = True, font = 'monospace')
+    
+    # information button
+    drawRect(300, 600, 200, 50, fill = 'lightGreen', border = 'black')
+    drawLabel('Information', 400, 625, size = 20, font = 'monospace')
+
+    # start button
+    drawRect(700, 600, 200, 50, fill = 'lightGreen', border = 'black')
+    drawLabel('Start', 800, 625, size = 20, font = 'monospace')
+
+    # information button pressed
+    if (app.hx > 300 and app.hx < 500) and (app.hy > 600 and app.hy < 650):
+        setActiveScreen('information')
+        
+    # start button pressed
+    if (app.hx > 700 and app.hx < 900) and (app.hy > 600 and app.hy < 650):
+        setActiveScreen('type')
+
+
+def homescreen_onMousePress(app, mouseX, mouseY):
+   # mouseX, mouseY on information button
+    if ((mouseX > 300 and mouseX < 500) and (mouseY > 600 and mouseY < 650)):
+        app.hx = mouseX
+        app.hy = mouseY
+    
+    # mouseX, mouseY on start button 
+    elif ((mouseX > 700 and mouseX < 900) and (mouseY > 600 and mouseY < 650)):
+        app.hx = mouseX
+        app.hy = mouseY
+   
+
+def information_redrawAll(app):
+    drawLabel('Here are the basic instructions for this game:', app.width/2, 150, size = 20, font = 'monospace')
+    drawLabel('Press the PLAY button in the homepage', app.width/2, 200, size = 15, font = 'monospace')
+    drawLabel('You will be directed to a page where you can type in your own DNA sequence', app.width/2, 220, size = 15, font = 'monospace')
+    drawLabel('DNA sequences are made of the nucleotide bases adenine, cytosine, guanine, and thymine', app.width/2, 240, size = 15, font = 'monospace')
+    drawLabel('Make sure to only type in A, C, G, or T', app.width/2, 260, size = 15, font = 'monospace')
+    drawLabel('If another letter is typed, you will receive an error message', app.width/2, 280, size = 15, font = 'monospace')
+    drawLabel('Also, make sure you type in exactly 30 letters', app.width/2, 300, size = 15, font = 'monospace')
+    drawLabel('Once you are done, you can press ENTER or press the GENERATE RNA button', app.width/2, 320, size = 15, font = 'monospace')
+    drawLabel('Then, you will receive a corresponding RNA sequence for your DNA sequence', app.width/2, 340, size = 15, font = 'monospace')
+    drawLabel('Once you get your RNA sequence, you can press the GENERATE AMINO ACID button to get your amino acid sequence', app.width/2, 360, size = 15, font = 'monospace')
+    # continue once the game progresses
+
+    # back button
+    drawRect(300, 600, 200, 50, fill = 'lightGreen', border = 'black')
+    drawLabel('Back', 400, 625, size = 20, font = 'monospace')
+
+    # start button
+    drawRect(700, 600, 200, 50, fill = 'lightGreen', border = 'black')
+    drawLabel('Start', 800, 625, size = 20, font = 'monospace')
+
+    # back button pressed
+    if (app.ix > 300 and app.ix < 500) and (app.iy > 600 and app.iy < 650):
+        setActiveScreen('homescreen')
+        
+    # start button pressed
+    if (app.iy > 700 and app.iy < 900) and (app.iy > 600 and app.iy < 650):
+        setActiveScreen('type')
+
+def information_onMousePress(app, mouseX, mouseY):
+    # mouseX, mouseY on back button
+    if ((mouseX > 300 and mouseX < 500) and (mouseY > 600 and mouseY < 650)):
+        app.ix = mouseX
+        app.iy = mouseY
+    
+    # mouseX, mouseY on start button 
+    elif ((mouseX > 700 and mouseX < 900) and (mouseY > 600 and mouseY < 650)):
+        app.ix = mouseX
+        app.iy = mouseY
+
+
+def type_redrawAll(app):
+    # background color 
+    newgreen = rgb(230, 240, 220)
+    drawRect(0, 0, app.width, app.height, fill = newgreen)
+
+    # images
+    glutamineWidth, glutamineHeight = (app.glutamineWidth//10 ,app.glutamineHeight//10)
+    drawImage(app.glutamine, 100, 100, width = glutamineWidth, height = glutamineHeight, align = 'center', rotateAngle = -30)
+
+    asparticAcidWidth, asparticAcidHeight = (app.asparticAcidWidth//10 ,app.asparticAcidHeight//10)
+    drawImage(app.asparticAcid, 250, 100, width = asparticAcidWidth, height = asparticAcidHeight, align = 'center', rotateAngle = 30)
+
+    isoleucineWidth, isoleucineHeight = glutamineWidth, glutamineHeight
+    drawImage(app.isoleucine, 400, 100, width = isoleucineWidth, height = isoleucineHeight, align = 'center', rotateAngle = -30)
+
+    phenylalanineWidth, phenylalanineHeight = glutamineWidth, glutamineHeight
+    drawImage(app.phenylalanine, 550, 100, width = phenylalanineWidth, height = phenylalanineHeight, align = 'center', rotateAngle = 30)
+
+    glutamineWidth, glutamineHeight = (app.glutamineWidth//10 ,app.glutamineHeight//10)
+    drawImage(app.glutamine, 700, 100, width = glutamineWidth, height = glutamineHeight, align = 'center', rotateAngle = -30)
+
+    asparticAcidWidth, asparticAcidHeight = (app.asparticAcidWidth//10 ,app.asparticAcidHeight//10)
+    drawImage(app.asparticAcid, 850, 100, width = asparticAcidWidth, height = asparticAcidHeight, align = 'center', rotateAngle = 30)
+
+    isoleucineWidth, isoleucineHeight = glutamineWidth, glutamineHeight
+    drawImage(app.isoleucine, 1000, 100, width = isoleucineWidth, height = isoleucineHeight, align = 'center', rotateAngle = -30)
+
+    phenylalanineWidth, phenylalanineHeight = glutamineWidth, glutamineHeight
+    drawImage(app.phenylalanine, 1150, 100, width = phenylalanineWidth, height = phenylalanineHeight, align = 'center', rotateAngle = 30)
+
+
+    drawLabel('Type your own DNA sequence:', app.width/2, 220, size = 20, font = 'monospace')
+    drawRect(300, 300, 600, 50, fill = 'white', border = 'black')
+
+    # length of current DNA sequence
+    if len(app.dna) == 0 or len(app.dna) == 1:
+        drawLabel(f'Your sequence is currently {len(app.dna)} base long', app.width/2, 250, size = 20, font = 'monospace')
+    elif len(app.dna) > 1:
+        drawLabel(f'Your sequence is currently {len(app.dna)} bases long', app.width/2, 250, size = 20, font = 'monospace')
+
+    # type in the white box
+    baseX, baseY = 310, 325
+    for base in app.dna:
+        drawLabel(base, baseX, baseY, size = 20, font = 'monospace', align = 'center')
+        baseX += 20
+    if app.errorMessage != None:
+        drawLabel(app.errorMessage, app.width/2, 600, font = 'monospace', size = 20, italic = True, fill = 'red')
+
+    # print RNA
+    if app.generatingRNA == True:
+        drawLabel(app.rna, app.width/2, 400, font = 'monospace', size = 20)
+    
+    # print amino acids
+    numAminoAcid = len(app.aminoAcid)
+    boxX, boxY = 350, 450
+    aminoAcidX, aminoAcidY = 375, 465
+    if app.generatingAminoAcid == True:
+        for i in range(numAminoAcid):
+            drawRect(boxX, boxY, 50, 30, fill = 'white', border = 'black')
+            boxX += 50
+
+        for aminoAcid in app.aminoAcid:
+            print(aminoAcid)
+            drawLabel(aminoAcid, aminoAcidX, aminoAcidY, size = 20, font = 'monospace')
+            aminoAcidX += 50
+
+    # reset DNA sequence button 
+    drawCircle(950, 325, 25, fill = 'red', border = 'white')
+    drawLabel('RESET', 950, 325, fill = 'white', align = 'center', bold = True)
+
+
+def type_onKeyPress(app, key):
+    if key in ['a', 'c', 'g', 't'] and len(app.dna) < 30:
+        app.errorMessage = None
+        app.dna += key
+    
+    elif key == 'backspace':
+        app.dna = app.dna[:-1]
+
+    if len(app.dna) < 30 and key not in ['a', 'c', 'g', 't', 'backspace', 'enter']:
+        app.errorMessage = 'Not a legal DNA nucleotide base - please type A, C, G, or T'
+
+    if key == 'enter' and len(app.dna) < 30 and len(app.dna) % 3 == 0:
+        app.missingDNAbases = 30 - len(app.dna)
+        app.errorMessage = f'You need {app.missingDNAbases} more bases'
+    
+    if key == 'enter' and len(app.dna) < 30 and len(app.dna) % 3 != 0:
+        if len(app.dna) < 29:
+            app.errorMessage = f'Need {30 - len(app.dna)} more legal bases'
+        if len(app.dna) == 29:
+            app.errorMessage = 'Need 1 more legal base'
+    
+    if key == 'enter' and len(app.dna) == 30 and len(app.dna) % 3 == 0:
+        app.errorMessage = None
+        app.generatingRNA = True
+        generateRNA(app, app.dna)
+
+    if app.generatingRNA == True and key == 'enter':
+        app.generatingAminoAcid = True
+        generateAminoAcid(app, app.rna)
+
+def generateRNA(app, s):
+    coding_DNA = Seq(s)
+    app.rna = coding_DNA.transcribe()
+
+    # for base in s:
+    #     if base == 't':
+    #         app.rna += 'u'
+    #     else:
+    #         app.rna += base
+
+    return app.rna
+    
+def generateAminoAcid(app, s):
+    coding_RNA = Seq(s)
+    app.aminoAcid = coding_RNA.translate()
+    print(app.aminoAcid)
+    return app.aminoAcid
+
+
+def type_onMousePress(app, mouseX, mouseY):
+    app.typex = mouseX
+    app.typey = mouseY
+
+    if (925 < app.typex and app.typex < 975) and (app.typey > 300 and app.typey < 350):
+        app.dna = ''
+        app.rna = ''
+        app.aminoAcid = ''
+        app.errorMessage = ''
+
+
 def main():
-    runAppWithScreens(initialScreen = 'homescreen', width = 1200, height = 800)
+   runAppWithScreens(initialScreen = 'homescreen', width = 1200, height = 800)
 
 main()
