@@ -7,11 +7,16 @@ import os, pathlib
 import Bio
 from Bio.Seq import Seq 
 from Bio import SeqIO
+from Bio.Seq import reverse_complement, transcribe, back_transcribe, translate
 from Bio import pairwise2
 from Bio.pairwise2 import format_alignment
 
 # getting rgb: https://convertingcolors.com/hex-color-E6FFE3.html?search=e6ffe3
 # biology1: https://static.vecteezy.com/system/resources/previews/024/291/508/original/biology-graphic-clipart-design-free-png.png 
+# dna3: https://www.onlygfx.com/dna-tattoo-png-transparent-svg-vector/ 
+# aminocid: https://en.m.wikipedia.org/wiki/File:Protein_RTF1_PDB_2BZE.png
+# site the website and video 
+# maybe 
 
 class Aminoacids:
     def __init__(self, codon, name, letter):
@@ -40,26 +45,45 @@ Trp = Aminoacids(['UGG'], 'Tryptophan', 'W')
 Tyr = Aminoacids(['UAU', 'UAC'], 'Tyrosine', 'Y')
 Val = Aminoacids(['GUU', 'GUC', 'GUA', 'GUG'], 'Valine', 'V')
 
+class Anki: 
+    def __init__(self, question, defaultInterval):
+        self.question = question
+        self.defaultInterval = defaultInterval
+        self.newInterval = defaultInterval
+        self.defaultEase = 2.5
+        self.color = None
+
+    def again(self):
+        self.newInterval = self.defaultInterval
+        self.defaultEase -= 0.2
+        self.color = 'lightCoral'
+
+    def hard(self):
+        self.newInterval *= 1.2
+        self.defaultEase -= 0.15
+        self.color = 'lightGray'
+
+    def good(self):
+        self.newInterval *= 2.5
+        self.color = 'limeGreen'
+    
+    def easy(self):
+        self.newInterval *= (2.5 * 1.3)
+        self.defaultEase *= 0.013
+        self.color = 'lightSkyBlue'
 
 def onAppStart(app):
    app.screen = 'homescreen'
    app.image = Image.open(os.path.join(pathlib.Path(__file__).parent,"biology1.jpg"))
    app.image = CMUImage(app.image)
    app.imageWidth, app.imageHeight = app.image.image.width, app.image.image.height
-   app.hx = 0
-   app.hy = 0
-   app.ix = 0
-   app.iy = 0
-   app.dna = ''
-   app.errorMessage = None
-   app.extraDNAbases = 0
-   app.missingDNAbases = 0
-   app.generatingRNA = False
-   app.rna = ''
-   app.generatingAminoAcid = False
-   app.aminoAcid = ''
-   app.typex = 0
-   app.typey = 0
+   app.x = 0
+   app.y = 0
+
+   # homescreen images
+   app.dna3 = Image.open(os.path.join(pathlib.Path(__file__).parent,"dna3.png"))
+   app.dna3 = CMUImage(app.dna3)
+   app.dna3Width, app.dna3Height = app.dna3.image.width, app.dna3.image.height
 
    # type page images 
    # https://www.stockio.com/free-clipart/glutamine-amino-acid
@@ -87,6 +111,105 @@ def onAppStart(app):
    app.phenylalanine = CMUImage(app.phenylalanine)
    app.phenylalanineWidth, app.phenylalanineHeight = app.phenylalanine.image.width, app.phenylalanine.image.height
 
+   # https://www.1001freedownloads.com/free-clipart/phenylalanine-amino-acid
+   app.aminoacid = Image.open(os.path.join(pathlib.Path(__file__).parent,"aminoacid.jpg"))
+   app.aminoacid = CMUImage(app.aminoacid)
+   app.aminoacidWidth, app.aminoacidHeight = app.aminoacid.image.width, app.aminoacid.image.height
+
+   app.trophy = Image.open(os.path.join(pathlib.Path(__file__).parent,"trophy.jpg"))
+   app.trophy = CMUImage(app.trophy)
+   app.trophyWidth, app.trophyHeight = app.trophy.image.width, app.trophy.image.height
+
+
+   restart(app)
+
+
+def restart(app):
+   app.screen = 'information'
+   app.screen = 'type'
+   app.screen = 'playInformation'
+   app.screen = 'play'
+   app.screen = 'blast'
+   app.screen = 'rna'
+   app.screen = 'stop'
+   app.numBoxesDrawn = 0
+   app.dna = ''
+   app.errorMessage = None
+   app.extraDNAbases = 0
+   app.missingDNAbases = 0
+   app.generatingRNA = False
+   app.rna = ''
+   app.generatingAminoAcid = False
+   app.aminoAcidString = ''
+   app.aminoAcid = []
+   app.typex = 0
+   app.typey = 0
+   app.allAminoAcids = [Ala, Arg, Asp, Asn, Cys, Glu, Gln, Gly, His, Ile, Leu, Lys, Met, Phe, Pro, Ser, Thr, Trp, Tyr, Val]
+   app.forBlast = []
+   app.chooseBlast = False
+   app.chooseRNA = False
+   app.randomDNA = ''
+   app.randomRNA = ''
+   app.randomAminoAcid = ''
+   app.bases = ['a', 'c', 'g', 't']
+   app.checkRNA = False
+   app.checkAminoAcid = False
+   app.randomRNAdone = False
+   app.rx = 0
+   app.ry = 0
+   app.randomEnterCount = 0
+   app.correctRNA = False
+   app.correctAminoAcid = False
+   app.bx = 0
+   app.by = 0
+   app.startBlast = False
+   app.blastResult = None
+   app.blastScore = 0
+   app.checkLengthAminoAcid = []
+   app.selectedAminoAcids = []
+   app.selectedAminoAcidCodons = []
+   app.boxIndex = []
+   app.currAminoAcid = None
+   app.choiceBoxCoordinates = []
+   app.choiceBoxAminoAcid = []
+   app.generatingChoiceBox = False
+   app.generatePlayError = False
+   app.isDraggingType = False 
+   app.typeEnterCount = 0
+   app.typeAminoAcidBoxesDrawn = False
+   app.time = []
+   app.counter = 0
+   app.stepsPerSecond = 1
+   app.playEnter = False
+   app.pix = 0
+   app.piy = 0
+   app.score = 0
+   app.gameOver = False 
+   app.randomActivate = False 
+   app.answerAminoAcid = ''
+   app.correctCodon = []
+   app.finalCodonChoices = []
+   app.px = 0
+   app.py = 0
+   app.answer = -1
+   app.correctMessage = False
+   app.popup = False
+   app.ankiChoiceColors = ['red', 'gray', 'green', 'blue']
+   app.ankiChoices = ['Again', 'Hard', 'Good', 'Easy']
+   app.color = 'lightGreen'
+   app.ankiChoice = ''
+   app.ankis = []
+   app.defaultInterval = 10
+   app.questionIndex = -1
+   app.currentTime = 0
+   app.endTime = []     # storing end times for each question
+   app.questions = []
+   app.askedAll = False
+   app.remember = []
+   app.wait = False
+   app.playerName = ''
+   app.sx = 0
+   app.sy = 0
 
 
 def homescreen_redrawAll(app):
@@ -98,6 +221,15 @@ def homescreen_redrawAll(app):
     newWidth, newHeight = (app.imageWidth//10 ,app.imageHeight//10)
     drawImage(app.image, app.width/2, app.height/2, width = newWidth, height = newHeight, align = 'center')
 
+    newWidth, newHeight = (app.imageWidth//7 ,app.imageHeight//9)
+    drawImage(app.dna3, 230, 290, width = newWidth, height = newHeight)
+
+    newWidth, newHeight = (app.imageWidth // 6, app.imageHeight // 10)
+    drawImage(app.aminoacid, 900, app.height/2, width = newWidth, height = newHeight, align = 'center')
+
+    newWidth,newHeight = (app.imageWidth // 7, app.imageHeight // 10)
+    drawImage(app.trophy, app.width/2, app.height/2, width = newWidth, height = newHeight, align = 'center')
+    
     # title 
     drawLabel('Biology with Amino Acids', 600, 200, 
               size = 35, bold = True, font = 'monospace')
@@ -110,28 +242,26 @@ def homescreen_redrawAll(app):
     drawRect(700, 600, 200, 50, fill = 'lightGreen', border = 'black')
     drawLabel('Start', 800, 625, size = 20, font = 'monospace')
 
-    # information button pressed
-    if (app.hx > 300 and app.hx < 500) and (app.hy > 600 and app.hy < 650):
-        setActiveScreen('information')
-        
-    # start button pressed
-    if (app.hx > 700 and app.hx < 900) and (app.hy > 600 and app.hy < 650):
-        setActiveScreen('type')
-
 
 def homescreen_onMousePress(app, mouseX, mouseY):
    # mouseX, mouseY on information button
     if ((mouseX > 300 and mouseX < 500) and (mouseY > 600 and mouseY < 650)):
-        app.hx = mouseX
-        app.hy = mouseY
+        app.x = mouseX
+        app.y = mouseY
+        setActiveScreen('information')
     
     # mouseX, mouseY on start button 
     elif ((mouseX > 700 and mouseX < 900) and (mouseY > 600 and mouseY < 650)):
-        app.hx = mouseX
-        app.hy = mouseY
+        app.x = mouseX
+        app.y = mouseY
+        setActiveScreen('type')
    
 
 def information_redrawAll(app):
+    # background color 
+    newgreen = rgb(230, 240, 220)
+    drawRect(0, 0, app.width, app.height, fill = newgreen)
+
     drawLabel('Here are the basic instructions for this game:', app.width/2, 150, size = 20, font = 'monospace')
     drawLabel('Press the PLAY button in the homepage', app.width/2, 200, size = 15, font = 'monospace')
     drawLabel('You will be directed to a page where you can type in your own DNA sequence', app.width/2, 220, size = 15, font = 'monospace')
@@ -139,38 +269,38 @@ def information_redrawAll(app):
     drawLabel('Make sure to only type in A, C, G, or T', app.width/2, 260, size = 15, font = 'monospace')
     drawLabel('If another letter is typed, you will receive an error message', app.width/2, 280, size = 15, font = 'monospace')
     drawLabel('Also, make sure you type in exactly 30 letters', app.width/2, 300, size = 15, font = 'monospace')
-    drawLabel('Once you are done, you can press ENTER or press the GENERATE RNA button', app.width/2, 320, size = 15, font = 'monospace')
-    drawLabel('Then, you will receive a corresponding RNA sequence for your DNA sequence', app.width/2, 340, size = 15, font = 'monospace')
-    drawLabel('Once you get your RNA sequence, you can press the GENERATE AMINO ACID button to get your amino acid sequence', app.width/2, 360, size = 15, font = 'monospace')
+    drawLabel('Once you are done, press ENTER to generate your RNA and amino acid sequence.', app.width/2, 320, size = 15, font = 'monospace')
+    drawLabel('Your DNA sequence must generate at least four different amino acids.', app.width/2, 340, size = 15, font = 'monospace')
+    drawLabel('If not, you will be prompted to press the RESET button and retype your amino acid sequence.', app.width/2, 360, size = 15, font = 'monospace')
+    drawLabel('Once you have your legal amino acid sequence, you can drag specific amino acids you want to study into the gray choice box.', app.width/2, 380, size = 15, font = 'monospace')
+    drawLabel('You must drag at least four amino acids. If not, you will receive an error message.', app.width/2, 400, size = 15, font = 'monospace')
+    drawLabel('Once you are ready, you can press the PLAY button.', app.width/2, 420, size = 15, font = 'monospace')
+    drawLabel('You will have a chance to study the amino acids and its codons. Once you are ready, you can press the PLAY button', app.width/2, 440, size = 15, font = 'monospace')
     # continue once the game progresses
 
     # back button
-    drawRect(300, 600, 200, 50, fill = 'lightGreen', border = 'black')
-    drawLabel('Back', 400, 625, size = 20, font = 'monospace')
+    drawRect(10, 10, 60, 30, fill = 'red', border = 'black')
+    drawLabel('Back', 40, 25, size = 15, font = 'monospace', fill = 'white', bold = True)
 
     # start button
-    drawRect(700, 600, 200, 50, fill = 'lightGreen', border = 'black')
-    drawLabel('Start', 800, 625, size = 20, font = 'monospace')
+    drawRect(500, 600, 200, 50, fill = 'lightGreen', border = 'black')
+    drawLabel('Start', 600, 625, size = 20, font = 'monospace')
 
-    # back button pressed
-    if (app.ix > 300 and app.ix < 500) and (app.iy > 600 and app.iy < 650):
-        setActiveScreen('homescreen')
-        
-    # start button pressed
-    if (app.iy > 700 and app.iy < 900) and (app.iy > 600 and app.iy < 650):
-        setActiveScreen('type')
 
 def information_onMousePress(app, mouseX, mouseY):
     # mouseX, mouseY on back button
-    if ((mouseX > 300 and mouseX < 500) and (mouseY > 600 and mouseY < 650)):
-        app.ix = mouseX
-        app.iy = mouseY
+    if ((mouseX > 10 and mouseX < 70) and (mouseY > 10 and mouseY < 40)):
+        app.x = mouseX
+        app.y = mouseY
+        setActiveScreen('homescreen')      
     
     # mouseX, mouseY on start button 
-    elif ((mouseX > 700 and mouseX < 900) and (mouseY > 600 and mouseY < 650)):
-        app.ix = mouseX
-        app.iy = mouseY
+    elif ((mouseX > 500 and mouseX < 700) and (mouseY > 600 and mouseY < 650)):
+        app.x = mouseX
+        app.y = mouseY
+        setActiveScreen('type')
 
+################################################################################
 
 def type_redrawAll(app):
     # background color 
@@ -202,15 +332,18 @@ def type_redrawAll(app):
     phenylalanineWidth, phenylalanineHeight = glutamineWidth, glutamineHeight
     drawImage(app.phenylalanine, 1150, 100, width = phenylalanineWidth, height = phenylalanineHeight, align = 'center', rotateAngle = 30)
 
-
-    drawLabel('Type your own DNA sequence:', app.width/2, 220, size = 20, font = 'monospace')
+    # type box
+    drawLabel('Type your own DNA sequence:', app.width/2, 190, size = 20, font = 'monospace')
     drawRect(300, 300, 600, 50, fill = 'white', border = 'black')
 
     # length of current DNA sequence
     if len(app.dna) == 0 or len(app.dna) == 1:
-        drawLabel(f'Your sequence is currently {len(app.dna)} base long', app.width/2, 250, size = 20, font = 'monospace')
+        drawLabel(f'Your sequence is currently {len(app.dna)} base long', app.width/2, 220, size = 20, font = 'monospace')
     elif len(app.dna) > 1:
-        drawLabel(f'Your sequence is currently {len(app.dna)} bases long', app.width/2, 250, size = 20, font = 'monospace')
+        drawLabel(f'Your sequence is currently {len(app.dna)} bases long', app.width/2, 220, size = 20, font = 'monospace')
+    
+    if len(app.dna) == 30:
+        drawLabel('Press ENTER to generate your RNA and amino acid sequence', app.width/2, 250, size = 20, font = 'monospace')
 
     # type in the white box
     baseX, baseY = 310, 325
@@ -218,31 +351,82 @@ def type_redrawAll(app):
         drawLabel(base, baseX, baseY, size = 20, font = 'monospace', align = 'center')
         baseX += 20
     if app.errorMessage != None:
-        drawLabel(app.errorMessage, app.width/2, 600, font = 'monospace', size = 20, italic = True, fill = 'red')
+        drawLabel(app.errorMessage, app.width/2, 550, font = 'monospace', size = 20, italic = True, fill = 'red')
 
-    # print RNA
-    if app.generatingRNA == True:
-        drawLabel(app.rna, app.width/2, 400, font = 'monospace', size = 20)
-    
-    # print amino acids
-    numAminoAcid = len(app.aminoAcid)
-    boxX, boxY = 350, 450
-    aminoAcidX, aminoAcidY = 375, 465
-    if app.generatingAminoAcid == True:
-        for i in range(numAminoAcid):
-            drawRect(boxX, boxY, 50, 30, fill = 'white', border = 'black')
-            boxX += 50
+    if app.typeEnterCount >= 1:
+        # print RNA
+        if app.generatingRNA == True:
+            drawLabel(f'RNA : {app.rna}', app.width/2, 400, font = 'monospace', size = 20)
+        
+        # print amino acids
+        if app.generatingAminoAcid and not app.typeAminoAcidBoxesDrawn:
+            numAminoAcid = len(app.aminoAcid)
+            boxX, boxY = 350, 450
+            aminoAcidX, aminoAcidY = 375, 465
+            if app.generatingAminoAcid == True:
+                # print the box
+                for i in range(numAminoAcid):
+                    drawRect(boxX, boxY, 50, 30, fill = 'white', border = 'black')
+                    app.boxIndex.append([boxX, 450])
+                    boxX += 50
 
-        for aminoAcid in app.aminoAcid:
-            print(aminoAcid)
-            drawLabel(aminoAcid, aminoAcidX, aminoAcidY, size = 20, font = 'monospace')
-            aminoAcidX += 50
+                # print the amino acid
+                for aminoAcid in app.aminoAcid:
+                    # print(type(aminoAcid)) # string
+                    drawLabel(aminoAcid, aminoAcidX, aminoAcidY, size = 20, font = 'monospace')
+                    aminoAcidX += 50
 
     # reset DNA sequence button 
     drawCircle(950, 325, 25, fill = 'red', border = 'white')
     drawLabel('RESET', 950, 325, fill = 'white', align = 'center', bold = True)
 
+    # choice box 
+    drawRect(400, 600, 400, 150, fill = 'lightGrey', border = 'white')
+    drawLabel('Drag your choice of at least 4 amino acids', 600, 675, fill = 'white')
+    
+    # draw dragged amino acid
+    if app.isDraggingType == True and app.currAminoAcid != None:
+        drawLabel(app.currAminoAcid, app.typex, app.typey, font = 'monospace', size = 18)
+    
+    if len(app.choiceBoxAminoAcid) != 0: 
+        for i in range(len(app.choiceBoxAminoAcid)):
+            letter = app.choiceBoxAminoAcid[i]
+            x = app.choiceBoxCoordinates[i][0]
+            y = app.choiceBoxCoordinates[i][1]
+            drawLabel(letter, x, y, font = 'monospace', size = 18)
 
+    # check length before pressing enter 
+    for aminoAcid in app.aminoAcid:
+        if aminoAcid != '*':
+            app.checkLengthAminoAcid.append(aminoAcid)
+    if app.generatingAminoAcid == True and len(set(app.checkLengthAminoAcid)) < 4:
+        drawLabel('You dont have enough amino acids. Please click RESET and retype your DNA sequence', app.width/2, 540, fill = 'red', font = 'monospace', size = 20)
+
+    # check length after dragging and pressing play
+    if app.generatePlayError == True:
+        drawLabel('You dont have enough amino acids. Please click RESET and retype your DNA sequence', app.width/2, 540, fill = 'red', font = 'monospace', size = 20)
+
+    # play button 
+    drawRect(900, 650, 100, 50, border = 'black', fill = 'lightGreen')
+    drawLabel('Play', 950, 675, align = 'center', font = 'monospace', size = 18)
+
+    # blast button
+    if app.chooseBlast == False:
+        drawCircle(1025, 325, 25, fill = 'skyBlue', border = 'white')
+        drawLabel('BLAST', 1025, 325, fill = 'white', align = 'center', bold = True)
+    else:
+        drawCircle(1025, 325, 25, fill = 'blue', border = 'white')
+        drawLabel('BLAST', 1025, 325, fill = 'white', align = 'center', bold = True)
+
+    # rna button
+    if app.chooseRNA == False:
+        drawCircle(1100, 325, 25, fill = 'lightSalmon', border = 'white')
+        drawLabel('RNA', 1100, 325, fill = 'white', align = 'center', bold = True)
+    else:
+        drawCircle(1100, 325, 25, fill = 'darkOrange', border = 'white')
+        drawLabel('RNA', 1100, 325, fill = 'white', align = 'center', bold = True)
+
+    
 def type_onKeyPress(app, key):
     if key in ['a', 'c', 'g', 't'] and len(app.dna) < 30:
         app.errorMessage = None
@@ -264,31 +448,48 @@ def type_onKeyPress(app, key):
         if len(app.dna) == 29:
             app.errorMessage = 'Need 1 more legal base'
     
-    if key == 'enter' and len(app.dna) == 30 and len(app.dna) % 3 == 0:
-        app.errorMessage = None
-        app.generatingRNA = True
-        generateRNA(app, app.dna)
+    # if key == 'enter' and len(app.dna) == 30:
+    #     app.errorMessage = None
+    #     app.generatingRNA = True
+    #     app.generatingAminoAcid = True
+    #     app.typeEnterCount = 1
+    #     generateRNA(app, app.dna)
+    #     generateAminoAcid(app, app.rna)
 
-    if app.generatingRNA == True and key == 'enter':
-        app.generatingAminoAcid = True
-        generateAminoAcid(app, app.rna)
+    if key == 'enter' and len(app.dna) == 30 and len(app.forBlast) < 2 and app.chooseBlast == True:
+        app.forBlast.append(app.dna)
+        app.dna = ''
+        app.generatingRNA = False
+        app.generatingAminoAcid = False
+
+    if key == 'enter':
+        if len(app.dna) == 30:
+            if app.typeEnterCount == 0:
+                app.errorMessage = None
+                app.generatingRNA = True
+                app.generatingAminoAcid = True
+                app.typeEnterCount = 1
+                app.typeAminoAcidBoxesDrawn = True
+                generateRNA(app, app.dna)
+                generateAminoAcid(app, app.rna)
+            elif app.typeEnterCount == 1:
+                app.typeAminoAcidBoxesDrawn = False
+
 
 def generateRNA(app, s):
     coding_DNA = Seq(s)
     app.rna = coding_DNA.transcribe()
-
-    # for base in s:
-    #     if base == 't':
-    #         app.rna += 'u'
-    #     else:
-    #         app.rna += base
-
+    app.generatingRNA = True
     return app.rna
-    
+
+
 def generateAminoAcid(app, s):
     coding_RNA = Seq(s)
-    app.aminoAcid = coding_RNA.translate()
-    print(app.aminoAcid)
+    app.aminoAcidString = coding_RNA.translate()
+    for aa in app.aminoAcidString: 
+        app.aminoAcid.append(aa)
+    # print(app.aminoAcid)
+    app.generatingAminoAcid = True
     return app.aminoAcid
 
 
@@ -296,14 +497,595 @@ def type_onMousePress(app, mouseX, mouseY):
     app.typex = mouseX
     app.typey = mouseY
 
+    # press reset 
     if (925 < app.typex and app.typex < 975) and (app.typey > 300 and app.typey < 350):
         app.dna = ''
         app.rna = ''
-        app.aminoAcid = ''
+        app.aminoAcidString = ''
+        app.aminoAcid = []
         app.errorMessage = ''
+        app.choiceBoxCoordinates = []
+        app.choiceBoxAminoAcid = []
+        app.selectedAminoAcids = []
+        app.generatingRNA = False
+        app.generatingAminoAcid = False
+        app.generatingChoiceBox = False
+        app.generatePlayError = False
+        app.typeEnterCount = 0
+        
+    boxX, boxY = 350, 450
+    for i in range(len(app.aminoAcid)):
+        if ((app.typex > boxX and app.typex < boxX + 50) and (app.typey > boxY and app.typey < boxY + 30)):
+            if app.aminoAcid[i] != '*':
+                app.currAminoAcid = app.aminoAcid[i]
+                app.isDraggingType = False
+        boxX += 50
+
+    #if play button is pressed
+    if app.typex > 900 and app.typex < 1000 and app.typey > 650 and app.typey < 700:
+        if len(set(app.choiceBoxAminoAcid)) >= 4:
+            # randomAminoAcids(app)
+            setActiveScreen('playInformation')
+        else:
+            app.generatePlayError = True
+
+    # if blast button is pressed
+    if (1000 < app.typex and app.typex < 1050) and (app.typey > 300 and app.typey < 350):
+        if len(app.forBlast) == 0:
+            app.chooseBlast = True
+        else:
+            if len(app.forBlast) == 2:
+                setActiveScreen('blast')
+
+    # if rna button is press
+    if (1075 < app.typex and app.typex < 1125) and (app.typey > 300 and app.typey < 350):
+        app.chooseRNA = True
+        randomDNA(app)
+        setActiveScreen('rna')
 
 
+def type_onMouseDrag(app, mouseX, mouseY):
+    if app.currAminoAcid != None: 
+        app.typex = mouseX
+        app.typey = mouseY
+        app.isDraggingType = True
+
+
+def type_onMouseRelease(app, mouseX, mouseY):
+    if mouseX > 400 and mouseX < 800 and mouseY > 600 and mouseY < 750:
+        if app.isDraggingType == True and app.currAminoAcid != None: 
+            app.typex = mouseX
+            app.typey = mouseY
+            app.choiceBoxCoordinates.append([app.typex, app.typey])
+            app.choiceBoxAminoAcid.append(app.currAminoAcid)
+            app.generatingChoiceBox = True
+            # print('app.choiceBoxAminoAcid:', app.choiceBoxAminoAcid)
+        app.isDraggingType = False 
+    else:
+        app.currAminoAcid = None
+    
+    for aa1 in app.choiceBoxAminoAcid:
+        for aa2 in app.allAminoAcids:
+            if aa1 == aa2.letter:
+                if aa2.name not in app.selectedAminoAcids:
+                    app.selectedAminoAcids.append(aa2.name)
+                    app.remember.append(aa2.name)
+    
+    # app.choiceBoxAminoAcid is a list of LETTERS
+    # app.selectedAminoAcids is a list of NAMES not letters 
+    print('app.selectedAminoAcids:', app.selectedAminoAcids)
+
+    for aa1 in app.selectedAminoAcids:
+        for aa2 in app.allAminoAcids:
+            if aa1 == aa2.name:
+                if aa2.codon not in app.selectedAminoAcidCodons:
+                    app.selectedAminoAcidCodons.append(aa2.codon)
+    # print(app.selectedAminoAcidCodons)
+    app.randomActivate = True 
+    # print('randomActivate is true')
+
+################################################################################
+
+def blast_redrawAll(app):
+    # background color 
+    newgreen = rgb(230, 240, 220)
+    drawRect(0, 0, app.width, app.height, fill = newgreen)
+
+    drawLabel('These are the two DNA sequences that you typed:', app.width/2, 100, font = 'monospace', size = 20)
+
+    y = 170
+    for i in range(2):
+        drawLabel(app.forBlast[i], app.width/2, y, font = 'monospace', size = 18)
+        y += 50 
+
+    # run blast button
+    drawRect(500, 300, 200, 50, fill = 'lightGreen', border = 'black')
+    drawLabel('Show result', 600, 325, size = 20, font = 'monospace')
+
+    # blast result
+    if app.startBlast == True:
+        drawLabel(f'Your score is {app.blastScore}', app.width/2, 420, font = 'monospace', size = 18)
+        blastX = 300
+        blastY = 470
+        first = app.forBlast[0]
+        second = app.forBlast[1]
+        for i in range(30):
+            drawLabel(first[i], blastX, blastY, font = 'monospace', size = 18)
+            if first[i] == second[i]:
+                drawCircle(blastX, blastY + 20, 3, fill = 'black')
+            else:
+                drawCircle(blastX, blastY + 20, 3, fill = 'red')
+            drawLabel(second[i], blastX, blastY + 40, font = 'monospace', size = 18)
+            blastX += 20
+
+        drawLabel('Black dots show where the nucleotide bases are equivalent.', app.width/2, 550, font = 'monospace', size = 18)
+        drawLabel('Red dots show where the nucleotide bases are different.', app.width/2, 580, font = 'monospace', size = 18)
+        drawLabel('Your score is the number of equivalent bases in the same location.', app.width/2, 610, font = 'monospace', size = 18)
+
+def getBlastScore(app):
+    first = app.forBlast[0]
+    second = app.forBlast[1]
+    
+    for i in range(30):
+        if first[i] == second[i]:
+            print(i, 'True')
+            app.blastScore += 1
+
+
+def blast_onMousePress(app, mouseX, mouseY):
+    app.bx = mouseX
+    app.by = mouseY
+
+    if app.bx > 500 and app.bx < 700 and app.by > 300 and app.by < 350:
+        app.startBlast = True 
+
+    if app.startBlast == True:
+        getBlastScore(app)
+
+
+################################################################################
+
+def rna_redrawAll(app):
+    # background color 
+    newgreen = rgb(230, 240, 220)
+    drawRect(0, 0, app.width, app.height, fill = newgreen)
+
+    drawLabel('Please type the corresponding RNA sequence to this random DNA sequence:', app.width/2, 100, font = 'monospace', size = 20)
+
+    # random DNA 
+    if len(app.randomDNA) == 30:
+        drawLabel(app.randomDNA, app.width/2, 150, font = 'monospace', size = 18) 
+
+    # type box RNA
+    if app.randomEnterCount <= 2:
+        drawLabel('Type your RNA sequence:', app.width/2, 260, size = 20, font = 'monospace')
+        # box
+        drawRect(300, 300, 600, 50, fill = 'white', border = 'black')
+        # bases
+        baseX = 310
+        baseY = 325
+        for base in app.randomRNA:
+            drawLabel(base, baseX, baseY, size = 20, font = 'monospace', align = 'center')
+            baseX += 20
+
+    # rna is true 
+    if app.randomEnterCount == 1 or app.randomEnterCount == 2:
+        if app.checkRNA == True:
+            drawLabel('Your RNA sequence is correct! Now type the corresponding amino acid sequence.', app.width/2, 400, font = 'monospace', size = 18)
+        else:
+            drawLabel('Your RNA sequence is incorrect. Now type the corresponding amino acid sequence.', app.width/2, 400, font = 'monospace', size = 18)
+
+    # type box amino acid
+    if app.randomEnterCount >= 1:
+        # box
+        drawRect(300, 450, 600, 50, fill = 'white', border = 'black')
+        # amino acids
+        baseX = 330
+        baseY = 475
+        for base in app.randomAminoAcid:
+            drawLabel(base, baseX, baseY, size = 20, font = 'monospace', align = 'center')
+            baseX += 60
+
+    if app.randomEnterCount == 2:
+        if app.checkAminoAcid == True:
+            drawLabel('Your amino acid sequence is correct! Nice job!', app.width/2, 550, font = 'monospace', size = 18)
+        else:
+            drawLabel('Your amino acid sequence is incorrect.', app.width/2, 550, font = 'monospace', size = 18)
+
+    # back button
+    drawRect(50, 700, 150, 50, fill = 'lightGreen', border = 'black')
+    drawLabel('Back', 125, 725, font = 'monospace', size = 18)
+
+    # reset button
+    drawRect(1000, 700, 150, 50, fill = 'lightGreen', border = 'black')
+    drawLabel('Reset', 1075, 725, font = 'monospace', size = 18)
+
+
+def randomDNA(app):
+    while len(app.randomDNA) < 30:
+        base = random.choice(app.bases)
+        app.randomDNA += base
+
+def rna_onMousePress(app, mouseX, mouseY):
+    app.rx = mouseX
+    app.ry = mouseY
+
+    # press back button 
+    if app.rx > 50 and app.rx < 200 and app.ry > 700 and app.ry < 750:
+        app.randomDNA = ''
+        randomDNA(app)
+        app.randomRNA = ''
+        app.randomAminoAcid = ''
+        app.randomEnterCount = 0
+        app.checkRNA = False
+        app.checkAminoAcid = False 
+        app.chooseRNA = False
+        setActiveScreen('type')   
+
+    # press reset button
+    if app.rx > 1000 and app.rx < 1150 and app.ry > 700 and app.ry < 750:
+        app.randomDNA = ''
+        randomDNA(app)
+        app.randomRNA = ''
+        app.randomAminoAcid = ''
+        app.randomEnterCount = 0
+        app.checkRNA = False
+        app.checkAminoAcid = False    
+
+
+def rna_onKeyPress(app, key):
+    if app.randomRNAdone == False:
+        if len(app.randomRNA) < 30 and key.isalpha():
+            app.randomRNA += key
+        
+        elif key == 'backspace':
+            app.randomRNA = app.randomRNA[:-1]
+
+        if key == 'enter' and len(app.randomRNA) == 30:
+            app.randomEnterCount = 1
+            checkRNA(app)
+            app.randomRNAdone = True
+
+    if app.randomRNAdone == True:
+        if len(app.randomAminoAcid) < 10 and key.isalpha() and key != 'enter':
+            app.randomAminoAcid += key
+        
+        elif key == 'backspace':
+            app.randomAminoAcid = app.randomAminoAcid[:-1]
+
+        if key == 'enter' and len(app.randomAminoAcid) == 10 and app.randomRNAdone == True:
+            checkAminoAcid(app)
+            app.randomEnterCount = 2
+
+
+def checkRNA(app):
+    codingDNA = Seq(app.randomDNA)
+    if app.randomRNA == codingDNA.translate():
+        app.checkRNA = True 
+    else:
+        app.checkRNA = False
+
+def checkAminoAcid(app):
+    codingRNA = Seq(app.randomRNA)
+    if app.randomAminoAcid == codingRNA.transcribe():
+        app.checkAminoAcid = True
+    else:
+        app.checkAminoAcid = False 
+
+
+################################################################################
+
+def playInformation_redrawAll(app):
+    # background color 
+    newgreen = rgb(230, 240, 220)
+    drawRect(0, 0, app.width, app.height, fill = newgreen)
+
+    drawLabel('These are the amino acids you have chosen to study:', app.width/2, 100, align = 'center', 
+              font = 'monospace', size = 24)
+    y = 170
+    for aa1 in app.selectedAminoAcids:
+        for aa2 in app.allAminoAcids: 
+            codons = ''
+            if aa1 == aa2.name:
+                for i in aa2.codon:
+                   codons = codons + i + ' '
+                drawLabel(f'{aa1}: {codons}', app.width/2, y, font = 'monospace', size = 20, align = 'center', fill = 'red')
+        y += 50
+
+    drawLabel('You will be given a name of an amino acid', app.width/2, y, font = 'monospace', size = 18)
+    drawLabel('Then you will be given four choices of codons to choose', app.width/2, y + 30, font = 'monospace', size = 18)
+    drawLabel('You will receive immediate feedback as you select your answer', app.width/2, y + 60, font = 'monospace', size = 18)
+    drawLabel('Below, you can choose the your time limit anytime from 30 seconds up to 100 seconds', app.width/2, y + 90, font = 'monospace', size = 18)
+    drawLabel('When you select the correct choice, your score will go up by 1', app.width/2, y + 120, font = 'monospace', size = 18)
+    drawLabel('When you select the wrong choice, your score will decrease by 1', app.width/2, y + 150, font = 'monospace', size = 18)
+    drawLabel('Make sure to study your amino acids before you begin!', app.width/2, y + 180, font = 'monospace', size = 18)
+
+    # play button 
+    drawRect(900, 680, 150, 40, fill = 'lightGreen', border = 'black')
+    drawLabel('Play', 975, 700, font = 'monospace', size = 18, align = 'center')
+
+    # name button 
+    drawRect(140, 680, 150, 40, fill = 'white', border = 'black')
+    drawLabel('Name:', 100, 700, font = 'monospace', size = 18)
+
+    x = 150
+    for s in app.playerName:
+        drawLabel(s, x, 700, size = 18, font = 'monospace')
+        x += 10
+
+
+def playInformation_onKeyPress(app, key):
+    if key.isalpha() and len(key) == 1:
+        app.playerName += key
+    
+    if key == 'backspace':
+        app.playerName = app.playerName[:-1]
+
+
+def playInformation_onMousePress(app, mouseX, mouseY):
+    app.pix = mouseX
+    app.piy = mouseY
+
+    if app.pix > 900 and app.pix < 1050 and app.piy > 680 and app.piy < 720:
+        randomAminoAcids(app)
+        setActiveScreen('play')
+    
+     
+################################################################################
+
+def play_redrawAll(app):
+    # background color 
+    newgreen = rgb(230, 240, 220)
+    drawRect(0, 0, app.width, app.height, fill = newgreen)
+
+    # player name
+    drawLabel(f'User name: {app.playerName}', app.width/2, 50, font = 'monospace', size = 18)
+
+    # counter
+    drawLabel(f'Time: {app.counter}', 1050, 50, size = 20, font = 'monospace', align = 'left')
+
+    # score 
+    drawLabel(f'Score: {app.score}', 1050, 80, size = 20, font = 'monospace', align = 'left')
+
+    # stop 
+    if app.popup == False:
+        drawRect(1050, 700, 100, 50, border = 'black', fill = 'red')
+        drawLabel('Stop', 1100, 725, align = 'center', font = 'monospace', size = 18, fill = 'white', bold = True)
+
+    # only for now!!!
+    drawLabel(app.answerAminoAcid, 1000, 600)
+    drawLabel(app.correctCodon, 1000, 700)
+    drawLabel(app.finalCodonChoices, 1000, 800)
+    
+    if app.askedAll == True:
+        drawLabel(f'Time: {app.counter}', 1050, 50, size = 20, font = 'monospace', align = 'left')
+        drawLabel('Please study your amino acids while you wait for the next set of questions.', app.width/2, 100, font = 'monospace', size = 18)
+        drawLabel('Click anywhere on the screen to begin your timer again once you finish studying.', app.width/2, 130, font = 'monospace', size = 18)
+        y = 200
+        for aa1 in app.remember:
+            for aa2 in app.allAminoAcids: 
+                codons = ''
+                if aa1 == aa2.name:
+                    for i in aa2.codon:
+                        codons = codons + i + ' '
+                    drawLabel(f'{aa1}: {codons}', app.width/2, y, font = 'monospace', size = 20, align = 'center', fill = 'red')
+            y += 50
+
+    elif app.popup == False:
+        # question statement
+        drawLabel('What is the corresponding codon for this amino acid?', app.width/2, 100, size = 25, font = 'monospace')
+
+        # question (name)
+        drawRect(400, 200, 400, 200, fill = app.color, border = 'black')
+        drawLabel(app.answerAminoAcid, 600, 300, size = 30, font = 'monospace')
+        
+        # choices (codons)
+        choiceX = 300
+        choiceY = 600
+        for i in range(4):
+            drawRect(choiceX, choiceY, 120, 60, fill = 'white', border = 'black')
+            drawLabel(app.finalCodonChoices[i], choiceX + 60, choiceY + 30, font = 'monospace', size = 18)
+            i += 1
+            choiceX += 160
+
+    else:
+        # if correct
+        if app.correctMessage == True:
+            drawLabel('You answered the question correctly! How was the question?', app.width/2, 250, size = 18, font = 'monospace')
+
+        # anki choice boxes
+        choiceX = 300
+        choiceY = 400
+        for i in range(4):
+            drawRect(choiceX, choiceY, 120, 60, fill = app.ankiChoiceColors[i], border = 'black')
+            drawLabel(app.ankiChoices[i], choiceX + 60, choiceY + 30, font = 'monospace', size = 18, fill = 'white', bold = True)
+            i += 1
+            choiceX += 160
+
+
+def play_onMousePress(app, mouseX, mouseY):
+    app.px = mouseX
+    app.py = mouseY
+
+    # if stop button is pressed
+    if app.px > 1050 and app.px < 1150 and app.py > 700 and app.py < 750:
+        setActiveScreen('stop') 
+        return
+
+    # choose answer choices
+    if app.popup == False:
+        if app.px > 300 and app.px < 420 and app.py > 600 and app.py < 660:
+            app.answer = 0
+        elif app.px > 460 and app.px < 580 and app.py > 600 and app.py < 660:
+            app.answer = 1
+        elif app.px > 620 and app.px < 740 and app.py > 600 and app.py < 660:
+            app.answer = 2
+        elif app.px > 780 and app.px < 900 and app.py > 600 and app.py < 660:
+            app.answer = 3
+        else:
+            return
+        
+        if checkAnswer(app) == True:
+            app.score += 1
+            app.correctMessage = True
+            app.popup = True
+        else:
+            app.popup = True
+  
+
+    # choose answer box
+    else:
+        # again
+        if app.px > 300 and app.px < 420 and app.py > 400 and app.py < 460:
+            app.ankis[app.questionIndex].again()
+        # hard
+        elif app.px > 460 and app.px < 580 and app.py > 400 and app.py < 460:
+            app.ankis[app.questionIndex].hard()
+        # good
+        elif app.px > 620 and app.px < 740 and app.py > 400 and app.py < 460:
+            app.ankis[app.questionIndex].good()
+        # easy
+        elif app.px > 780 and app.px < 900 and app.py > 400 and app.py < 460:
+            app.ankis[app.questionIndex].easy()
+        else:
+            return
+        
+        app.currentTime = app.counter
+        endTime = app.currentTime + app.ankis[app.questionIndex].newInterval    # time when we need to show the question again
+        if len(app.endTime) < len(app.ankis):   # app.ankis is the number of total possible questions
+            app.endTime.append(int(endTime))
+        else:
+            app.endTime[app.questionIndex] = int(endTime)   # updating endTime
+
+        randomAminoAcids(app)
+        app.popup = False 
+
+
+def checkAnswer(app):
+    if app.finalCodonChoices[app.answer] == app.correctCodon:
+        return True
+    else:
+        return False
+
+def randomAminoAcids(app):
+    if app.randomActivate == True:
+        if app.wait == True:
+            app.askedAll = True
+            app.popup = True
+            return 
+        app.questionIndex += 1
+        # 1 main 
+        answerAminoAcid = (random.choice(app.selectedAminoAcids)) # name
+        # app.remember.append(answerAminoAcid)
+
+        # correct codons 
+        correctCodons = None 
+        for aa in app.allAminoAcids:
+            if aa.name == answerAminoAcid:
+                correctCodons = aa.codon
+
+        # choose one correct codon
+        correctCodon = random.choice(correctCodons)
+
+        # incorrect codons
+        incorrectCodons = []
+        for aa in app.allAminoAcids:
+            if aa.name in app.remember and aa.name != answerAminoAcid:
+                incorrectCodons.append(aa.codon)
+
+        displayedIncorrectCodons = []
+        while len(displayedIncorrectCodons) < 3:
+            for codonLst in incorrectCodons:
+                displayedIncorrectCodons.append(random.choice(codonLst))
+
+        finalCodonChoices = [correctCodon] + displayedIncorrectCodons
+        random.shuffle(finalCodonChoices)
+
+        app.answerAminoAcid = answerAminoAcid
+        app.questions.append(app.answerAminoAcid)
+        app.correctCodon = correctCodon
+        app.finalCodonChoices = finalCodonChoices
+        app.defaultInterval += 4
+        app.ankis.append(Anki(app.answerAminoAcid, app.defaultInterval))
+        app.color = 'lightGreen'
+        app.selectedAminoAcids.remove(answerAminoAcid)
+        if len(app.selectedAminoAcids) == 0:
+            app.wait = True
+        
+
+def play_onStep(app):
+    if app.popup == True:
+        app.counter += 1
+    
+    if app.counter in app.endTime:
+        i = app.endTime.index(app.counter)      # find index of the question
+        question = app.questions[i]
+        app.questionIndex = i
+        previousAminoAcids(app, question)
+        app.color = app.ankis[i].color
+        print("Previous question")
+        app.counter += 1
+        app.askedAll = False
+        app.popup = False
+
+
+def previousAminoAcids(app, answerAminoAcid):
+    if app.randomActivate == True:
+        # correct codons 
+        correctCodons = None 
+        for aa in app.allAminoAcids:
+            if aa.name == answerAminoAcid:
+                correctCodons = aa.codon
+
+        # choose one correct codon
+        correctCodon = random.choice(correctCodons)
+
+        # incorrect codons
+        incorrectCodons = []
+        for aa in app.allAminoAcids:
+            if aa.name in app.remember and aa.name != answerAminoAcid:
+                incorrectCodons.append(aa.codon)
+
+        displayedIncorrectCodons = []
+        while len(displayedIncorrectCodons) < 3:
+            for codonLst in incorrectCodons:
+                displayedIncorrectCodons.append(random.choice(codonLst))
+
+        finalCodonChoices = [correctCodon] + displayedIncorrectCodons
+        random.shuffle(finalCodonChoices)
+
+        app.answerAminoAcid = answerAminoAcid
+        if app.answerAminoAcid not in app.questions:
+            app.questions.append(app.answerAminoAcid)
+        app.correctCodon = correctCodon
+        app.finalCodonChoices = finalCodonChoices
+
+################################################################################
+
+def stop_redrawAll(app):
+    # background color 
+    newgreen = rgb(230, 240, 220)
+    drawRect(0, 0, app.width, app.height, fill = newgreen)
+
+    drawLabel(f'User {app.playerName}, you answered {app.score} questions correctly!', app.width/2, 150, font = 'monospace', size = 18)
+    drawLabel('Press BACK TO HOME to restart your game.', app.width/2, 180, font = 'monospace', size = 18)
+
+    drawRect(515, 650, 170, 50, fill = 'lightGreen', border = 'black')
+    drawLabel('Back to home', 600, 675, font = 'monospace', size = 18)
+
+
+def stop_onMousePress(app, mouseX, mouseY):
+    app.sx = mouseX
+    app.sy = mouseY
+
+    if app.sx > 515 and app.sx < 685 and app.sy > 650 and app.sy < 700:
+        onAppStart(app)
+        setActiveScreen('homescreen')
+
+
+        
 def main():
    runAppWithScreens(initialScreen = 'homescreen', width = 1200, height = 800)
 
 main()
+
